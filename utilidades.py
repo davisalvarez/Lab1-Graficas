@@ -12,3 +12,6 @@ def word(w):
 #Reserva 4 Byte en memoria
 def dword(d):
     return struct.pack('=l',d)
+
+def crossProductu(pointA, pointB):
+    return (pointA[0]*pointB[1]) - (pointA[1]*pointB[0])

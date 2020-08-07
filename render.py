@@ -1,6 +1,5 @@
 from utilidades import *
 from ModeloOBJ import *
-import numpy as np
 import random
 
 def color(r, g, b):
@@ -237,7 +236,16 @@ class render(object):
                     self.glLineIMG(x0, y0, x1, y1)
 
             else:
-                print("en proceso")
+                print("cara: " +str(cara))
+                pologon= []
+                for vert in range(vertices):
+                    v1 = model.vertices[cara[vert][0] - 1]
+                    x0 = round(v1[0] * scale[0] + translate[0])
+                    y0 = round(v1[1] * scale[0] + translate[0])
+
+                    pologon.append([x0,y0])
+                self.earClipping(pologon, color(random.randint(0, 255) / 255, random.randint(0, 255)/ 255, random.randint(0, 255)/ 255))
+
 
     def paintPoly(self, poly):
         largo = len(poly)
@@ -307,11 +315,11 @@ class render(object):
         lar = len(polygon)
 
         for p in range(lar):
-            sumPX += np.cross(polygon[p], polygon[(p + 1) % lar])
+            sumPX += crossProductu(polygon[p], polygon[(p + 1) % lar])
         return sumPX
 
 
-    def earClipping(self, polygon, color = None):
+    def earClipping(self, polygon, _color = None):
 
         #Calculamos la orientación del poligon
         ori = self.polyOrientation(polygon)
@@ -320,19 +328,28 @@ class render(object):
         if ori > 0:
             polygon.reverse()
        #print(str(polygon))
-
+        r = 0
+        g = 0
+        b = 0
         while(len(polygon) >= 3):
             pz = len(polygon)
+            pz2 = len(polygon)
             #print("len: "+str(len(polygon)))
             isTriRemove = True
-
+            print(".")
 
             for point in range(pz):
-                #print(str((point + 2) % pz))
+            #point = 0
+            #while(point < pz):
+                #if(point+2 >= pz2):
+                #    print("STOPPPP!")
+                #    break
+
+                print("pz: "+str(pz)+" point: "+str(point)+" len: "+str(len(polygon)))
                 v1 = polygon[point]
                 v2 = polygon[(point + 1) % pz]
                 v3 = polygon[(point + 2) % pz]
-
+                #point += 1
                 oriT = self.polyOrientation([v1, v2, v3])
 
                 if oriT > 0:
@@ -344,17 +361,24 @@ class render(object):
                     d1 = self.polyOrientation([x, v1, v2] )
                     d2 = self.polyOrientation([x, v2, v3])
                     d3 = self.polyOrientation([x, v3, v1])
-                    #print("1-º"+str(d1)+" 2>"+str(d2)+" 3>"+str(d3))
+                    #print("1- "+str(d1)+" 2>"+str(d2)+" 3>"+str(d3))
                     if (d1 > 0 and d2 > 0 and d2 > 0):
                         #tiene punto
-                        #print("punto!")
+                        print("punto!")
                         continue
 
+                r += 0.02
+                g += 0.02
+                b += 0.02
+                #_color = color(r,g,b)
                 isTriRemove = False
-                self.fillTriangle(v1, v2, v3, color)
+                self.fillTriangle(v1, v2, v3, _color)
                 polygon.remove(polygon[(point + 1) % pz])
+                pz2 -= 1
+                #pz = len(polygon)
+                #self.paintPoly(polygon)
+                #if(point > pz):
                 break
-
             if isTriRemove:
                 break
 
