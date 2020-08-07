@@ -7,6 +7,7 @@ Davis Alvarez - 15842
 SR1: Points
 """
 from render import *
+import random
 
 img = render()
 
@@ -34,12 +35,27 @@ poli4 = [(413, 177), (448, 159), (502, 88), (553, 53),
 
 poli5 = [(682, 175), (708, 120), (735, 148), (739, 170)]
 
-img.paintPoly(poli1)
-img.paintPoly(poli2)
-img.paintPoly(poli3)
-img.paintPoly(poli4)
-img.paintPoly(poli5)
 
+
+img.fillPoly(poli1)
+
+img.fillPoly(poli2)
+
+
+img.fillPoly(poli3)
+
+
+img.fillPoly(poli4)
+
+
+img.fillPoly(poli5)
+
+"""
+
+img.fillTriangle((10, 70), (50, 160),(70, 80), color(random.randint(0, 255) / 255, random.randint(0, 255)/ 255, random.randint(0, 255)/ 255))
+img.fillTriangle((180, 50), (150, 1), (70, 180), color(random.randint(0, 255)/ 255, random.randint(0, 255)/ 255, random.randint(0, 255)/ 255))
+img.fillTriangle((180, 150), (120, 160), (130, 180), color(random.randint(0, 255)/ 255, random.randint(0, 255)/ 255, random.randint(0, 255)/ 255))
+"""
 
 img.glFinish() #5
 

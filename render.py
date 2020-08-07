@@ -1,5 +1,7 @@
 from utilidades import *
 from ModeloOBJ import *
+import numpy as np
+import random
 
 def color(r, g, b):
     return bytes([round(b * 255), round(g * 255), round(r * 255)])
@@ -67,10 +69,12 @@ class render(object):
         #print("y: " + str(yIMG))
 
 
-    def pintarPixelIMG(self, x, y):
-        #print("x->" + str(x))
-        #print("y->" + str(y))
-        self.pixels[y][x] = self.vetex_color
+    def pintarPixelIMG(self, x, y, color = None):
+        try:
+
+            self.pixels[y][x] = color or self.vetex_color
+        except:
+            print("pintarPixelIMG() error")
 
     def glColor(self, r, g, b):
         self.vetex_color=color(r, g, b)
@@ -205,7 +209,12 @@ class render(object):
                         y -= 1
                     cambiar += 1
 
-    def paintModelOBJ(self, filename, translate, scale):
+    def transform(self, vertex, translate=(0,0,0), scale=(1,1,1)):
+        return (round(vertex[0]*scale[0] + translate[0]),
+                round(vertex[1]*scale[1] + translate[1]))
+                #round(vertex[2]*scale[2] + translate[2]))
+
+    def paintModelOBJ(self, filename, translate = (0,0,0), scale = (1,1,1), isWireframe = False):
         model = ModeloOBJ(filename)
         #print(str(model.faces))
 
@@ -213,17 +222,22 @@ class render(object):
 
             vertices = len(cara)
 
-            for vert in range(vertices):
-                v1 = model.vertices[cara[vert][0] - 1]
-                v2 = model.vertices[cara[(vert + 1) % vertices][0]-1]
+            if isWireframe:
 
-                x0 = round(v1[0] * scale[0] + translate[0])
-                y0 = round(v1[1] * scale[0] + translate[0])
-                x1 = round(v2[0] * scale[0] + translate[0])
-                y1 = round(v2[1] * scale[0] + translate[0])
+                for vert in range(vertices):
+                    v1 = model.vertices[cara[vert][0] - 1]
+                    v2 = model.vertices[cara[(vert + 1) % vertices][0]-1]
 
-                #self.pintarPixelIMG(x1, y1)
-                self.glLineIMG(x0, y0, x1, y1)
+                    x0 = round(v1[0] * scale[0] + translate[0])
+                    y0 = round(v1[1] * scale[0] + translate[0])
+                    x1 = round(v2[0] * scale[0] + translate[0])
+                    y1 = round(v2[1] * scale[0] + translate[0])
+
+                    #self.pintarPixelIMG(x1, y1)
+                    self.glLineIMG(x0, y0, x1, y1)
+
+            else:
+                print("en proceso")
 
     def paintPoly(self, poly):
         largo = len(poly)
@@ -232,6 +246,154 @@ class render(object):
             v1 = poly[point]
             v2 = poly[(point + 1) % largo]
             self.glLineIMG(v1[0],v1[1],v2[0],v2[1])
+
+    def fillTriangle(self, A, B, C, color = None):
+
+        def flatBottom(v1, v2, v3):
+
+            for y in range(v1[1], v3[1]+1):
+
+                xi = round( v1[0] + (v3[0] - v1[0])/(v3[1] - v1[1])*(y - v1[1]) )
+                xf = round( v2[0] + (v3[0] - v2[0])/(v3[1] - v2[1])*(y - v2[1]) )
+
+                if xi > xf:
+                    xi, xf = xf, xi
+
+                for x in range(xi, xf +1):
+                    self.pintarPixelIMG(x,y, color)
+
+            #self.paintPoly([v1, v2, v3])
+
+        def flatTop(v1, v2, v3):
+
+            for y in range (v1[1], v3[1]+1):
+                xi = round( v2[0] + (v2[0] - v1[0])/(v2[1] - v1[1])*(y - v2[1]) )
+                xf = round( v3[0] + (v3[0] - v1[0])/(v3[1] - v1[1])*(y - v3[1]) )
+
+                if xi > xf:
+                    xi, xf = xf, xi
+
+                for x in range(xi, xf + 1):
+                    self.pintarPixelIMG(x, y, color)
+
+        #Aseguramos la forma del triangulo
+
+        if A[1] > B[1]:
+            A, B = B, A
+        if A[1] > C[1]:
+            A, C = C, A
+        if B[1] > C[1]:
+            B, C = C, B
+        if A[1]==C[1]:
+            return
+
+        if A[1] == B[1]: #flatBottom
+            flatBottom(A, B, C)
+        elif B[1] == C[1]: #flatTop
+            flatTop(A, B, C)
+        else: #Otro caso
+
+            xD = A[0] + (C[0] - A[0])/(C[1] - A[1]) * (B[1] - A[1])
+
+            D=(round(xD), B[1])
+
+
+            #Dividimos el triangulo en 2
+            flatBottom(D, B, C)
+            flatTop(A, B, D)
+
+    def polyOrientation(self, polygon):
+        sumPX = 0
+        lar = len(polygon)
+
+        for p in range(lar):
+            sumPX += np.cross(polygon[p], polygon[(p + 1) % lar])
+        return sumPX
+
+
+    def earClipping(self, polygon, color = None):
+
+        #Calculamos la orientación del poligon
+        ori = self.polyOrientation(polygon)
+
+        #verificamos si es CW
+        if ori > 0:
+            polygon.reverse()
+       #print(str(polygon))
+
+        while(len(polygon) >= 3):
+            pz = len(polygon)
+            #print("len: "+str(len(polygon)))
+            isTriRemove = True
+
+
+            for point in range(pz):
+                #print(str((point + 2) % pz))
+                v1 = polygon[point]
+                v2 = polygon[(point + 1) % pz]
+                v3 = polygon[(point + 2) % pz]
+
+                oriT = self.polyOrientation([v1, v2, v3])
+
+                if oriT > 0:
+                    #print(str(oriT)+" > 0")
+                    continue
+
+                #verificar si tiene punto adentro
+                for x in polygon:
+                    d1 = self.polyOrientation([x, v1, v2] )
+                    d2 = self.polyOrientation([x, v2, v3])
+                    d3 = self.polyOrientation([x, v3, v1])
+                    #print("1-º"+str(d1)+" 2>"+str(d2)+" 3>"+str(d3))
+                    if (d1 > 0 and d2 > 0 and d2 > 0):
+                        #tiene punto
+                        #print("punto!")
+                        continue
+
+                isTriRemove = False
+                self.fillTriangle(v1, v2, v3, color)
+                polygon.remove(polygon[(point + 1) % pz])
+                break
+
+            if isTriRemove:
+                break
+
+
+
+
+
+
+
+
+
+    def fillPoly(self, polygon, translate = (0,0,0), scale = (1,1,1)):
+
+        v0 = polygon[0]
+        v1 = polygon[1]
+        v2 = polygon[2]
+
+        v0 = self.transform(v0, translate, scale)
+        v1 = self.transform(v1, translate, scale)
+        v2 = self.transform(v2, translate, scale)
+
+        self.earClipping(polygon, color(random.randint(0, 255) / 255, random.randint(0, 255)/ 255, random.randint(0, 255)/ 255) )
+        #self.fillTriangle(v0, v1, v2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
